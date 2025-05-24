@@ -46,32 +46,57 @@
             <button class="tab-btn" data-tab="admin">Admin Login</button>
           </div>
 
-          <h3 class="login-title">Login</h3>
+          <!-- Employee Login Tab Content -->
+          <div class="tab-content active" data-tab="employee">
+            <h3 class="login-title">Employee Login</h3>
 
-          <!-- Login Form -->
-          <form id="loginForm" class="login-form">
-            <div class="form-group">
-              <label for="email">Email</label>
-              <input type="email" id="email" name="email" placeholder="Enter your email" required>
-            </div>
+            <form id="loginForm" class="login-form">
+              <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" placeholder="Enter your email" required>
+              </div>
 
-            <div class="form-group">
-              <label for="password">Password</label>
-              <input type="password" id="password" name="password" placeholder="Enter your password" required>
-            </div>
+              <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+              </div>
 
-            <button type="submit" class="login-btn">Login</button>
+              <button type="submit" class="login-btn">Login</button>
 
-            <div class="divider">
-              <span>or</span>
-            </div>
+              <div class="divider">
+                <span>or</span>
+              </div>
 
-            <button type="button" class="google-btn">Login With Google</button>
+              <button type="button" class="google-btn">Login With Google</button>
 
-            <div class="register-link">
-              <p>Don't have an account? <a href="/register.html" id="registerLink">Register</a></p>
-            </div>
-          </form>
+              <div class="register-link">
+                <p>Don't have an account? <a href="/register.html" id="registerLink">Register</a></p>
+              </div>
+            </form>
+          </div>
+
+          <!-- Admin Login Tab Content -->
+          <div class="tab-content" data-tab="admin">
+            <h3 class="login-title">Admin Login</h3>
+
+            <form id="adminLoginForm" class="login-form">
+              <div class="form-group">
+                <label for="adminEmail">Email</label>
+                <input type="email" id="adminEmail" name="email" placeholder="Enter your admin email" required>
+              </div>
+
+              <div class="form-group">
+                <label for="adminPassword">Password</label>
+                <input type="password" id="adminPassword" name="password" placeholder="Enter your admin password" required>
+              </div>
+
+              <button type="submit" class="login-btn">Admin Login</button>
+
+              <div class="register-link">
+                <p>Don't have an account? <a href="/register.html" id="adminRegisterLink">Register</a></p>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>

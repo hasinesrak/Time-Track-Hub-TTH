@@ -12,12 +12,20 @@ let isLockedOut = false
 
 // DOM Elements
 const tabButtons = document.querySelectorAll('.tab-btn')
+const tabContents = document.querySelectorAll('.tab-content')
 const loginForm = document.getElementById('loginForm')
+const adminLoginForm = document.getElementById('adminLoginForm')
+const googleButton = document.querySelector('.google-btn')
+
+// Employee form elements
 const emailInput = document.getElementById('email')
 const passwordInput = document.getElementById('password')
-const loginButton = document.querySelector('.login-btn')
-const googleButton = document.querySelector('.google-btn')
-// registerLink is now a direct HTML link to register.html
+const loginButton = document.querySelector('#loginForm .login-btn')
+
+// Admin form elements
+const adminEmailInput = document.getElementById('adminEmail')
+const adminPasswordInput = document.getElementById('adminPassword')
+const adminLoginButton = document.querySelector('#adminLoginForm .login-btn')
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
@@ -35,62 +43,83 @@ function initializeApp() {
 function setupTabSwitching() {
   tabButtons.forEach(button => {
     button.addEventListener('click', function() {
-      // Remove active class from all tabs
+      // Remove active class from all tabs and content
       tabButtons.forEach(tab => tab.classList.remove('active'))
+      tabContents.forEach(content => content.classList.remove('active'))
 
       // Add active class to clicked tab
       this.classList.add('active')
 
+      // Show corresponding content
+      const targetTab = this.dataset.tab
+      const targetContent = document.querySelector(`.tab-content[data-tab="${targetTab}"]`)
+      if (targetContent) {
+        targetContent.classList.add('active')
+      }
+
       // Update current login type
-      currentLoginType = this.dataset.tab
+      currentLoginType = targetTab
 
-      // Clear form
-      loginForm.reset()
-
-      // Update placeholder text based on login type
-      updatePlaceholders()
+      // Clear both forms
+      if (loginForm) loginForm.reset()
+      if (adminLoginForm) adminLoginForm.reset()
     })
   })
 }
 
-function updatePlaceholders() {
-  if (currentLoginType === 'admin') {
-    emailInput.placeholder = 'Enter admin email'
-    passwordInput.placeholder = 'Enter admin password'
-  } else {
-    emailInput.placeholder = 'Enter your email'
-    passwordInput.placeholder = 'Enter your password'
+// Form handling
+function setupFormHandling() {
+  // Employee login form
+  if (loginForm) {
+    loginForm.addEventListener('submit', async function(e) {
+      e.preventDefault()
+
+      if (isLockedOut) {
+        showMessage('Account is locked. Please try again later.', 'error')
+        return
+      }
+
+      const email = emailInput.value.trim()
+      const password = passwordInput.value.trim()
+
+      if (!email || !password) {
+        showMessage('Please fill in all fields', 'error')
+        return
+      }
+
+      await handleLogin(email, password, 'employee')
+    })
+  }
+
+  // Admin login form
+  if (adminLoginForm) {
+    adminLoginForm.addEventListener('submit', async function(e) {
+      e.preventDefault()
+
+      if (isLockedOut) {
+        showMessage('Account is locked. Please try again later.', 'error')
+        return
+      }
+
+      const email = adminEmailInput.value.trim()
+      const password = adminPasswordInput.value.trim()
+
+      if (!email || !password) {
+        showMessage('Please fill in all fields', 'error')
+        return
+      }
+
+      await handleLogin(email, password, 'admin')
+    })
   }
 }
 
-// Form handling
-function setupFormHandling() {
-  loginForm.addEventListener('submit', async function(e) {
-    e.preventDefault()
-
-    if (isLockedOut) {
-      showMessage('Account is locked. Please try again later.', 'error')
-      return
-    }
-
-    const email = emailInput.value.trim()
-    const password = passwordInput.value.trim()
-
-    if (!email || !password) {
-      showMessage('Please fill in all fields', 'error')
-      return
-    }
-
-    await handleLogin(email, password)
-  })
-}
-
-async function handleLogin(email, password) {
+async function handleLogin(email, password, loginType) {
   try {
     // Disable form during login
-    setFormLoading(true)
+    setFormLoading(true, loginType)
 
-    console.log('Attempting login for:', email, 'as', currentLoginType)
+    console.log('Attempting login for:', email, 'as', loginType)
 
     // Check if Supabase is properly configured
     if (!supabaseConfig.url || !supabaseConfig.anonKey || supabaseConfig.anonKey === 'your_anon_key_here') {
@@ -114,10 +143,10 @@ async function handleLogin(email, password) {
 
     // Check user role matches selected tab
     const userRole = await getUserRole(data.user.id)
-    console.log('User role:', userRole, 'Expected:', currentLoginType)
+    console.log('User role:', userRole, 'Expected:', loginType)
 
-    if (userRole !== currentLoginType) {
-      showMessage(`This account is not registered as ${currentLoginType}. Please use the correct login tab.`, 'error')
+    if (userRole !== loginType) {
+      showMessage(`This account is not registered as ${loginType}. Please use the correct login tab.`, 'error')
       await supabase.auth.signOut()
       return
     }
@@ -139,7 +168,7 @@ async function handleLogin(email, password) {
     console.error('Login error:', error)
     showMessage('An unexpected error occurred: ' + error.message, 'error')
   } finally {
-    setFormLoading(false)
+    setFormLoading(false, loginType)
   }
 }
 
@@ -224,33 +253,55 @@ function resetLoginAttempts() {
   loginAttempts = 0
 }
 
-function setFormLoading(loading) {
-  loginButton.disabled = loading
-  loginButton.textContent = loading ? 'Logging in...' : 'Login'
-  emailInput.disabled = loading
-  passwordInput.disabled = loading
+function setFormLoading(loading, loginType = 'employee') {
+  if (loginType === 'employee') {
+    if (loginButton) {
+      loginButton.disabled = loading
+      loginButton.textContent = loading ? 'Logging in...' : 'Login'
+    }
+    if (emailInput) emailInput.disabled = loading
+    if (passwordInput) passwordInput.disabled = loading
+    if (googleButton) googleButton.disabled = loading
+  } else {
+    if (adminLoginButton) {
+      adminLoginButton.disabled = loading
+      adminLoginButton.textContent = loading ? 'Logging in...' : 'Admin Login'
+    }
+    if (adminEmailInput) adminEmailInput.disabled = loading
+    if (adminPasswordInput) adminPasswordInput.disabled = loading
+  }
 }
 
-// Google Authentication
+// Google Authentication (Employee Only)
 function setupGoogleAuth() {
-  googleButton.addEventListener('click', async function() {
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
-      })
+  if (googleButton) {
+    googleButton.addEventListener('click', async function() {
+      try {
+        setFormLoading(true, 'employee')
 
-      if (error) {
-        showMessage('Google login failed', 'error')
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin + '/employee-dashboard.html',
+            queryParams: {
+              access_type: 'offline',
+              prompt: 'consent',
+            }
+          }
+        })
+
+        if (error) {
+          showMessage('Google login failed: ' + error.message, 'error')
+          console.error('Google auth error:', error)
+        }
+      } catch (error) {
+        showMessage('Google login failed: ' + error.message, 'error')
         console.error('Google auth error:', error)
+      } finally {
+        setFormLoading(false, 'employee')
       }
-    } catch (error) {
-      showMessage('Google login failed', 'error')
-      console.error('Google auth error:', error)
-    }
-  })
+    })
+  }
 }
 
 // Utility functions

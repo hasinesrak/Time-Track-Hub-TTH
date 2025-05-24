@@ -13,16 +13,28 @@ const ADMIN_REGISTRATION_CODE = appConfig.adminRegistrationCode
 
 // DOM Elements
 const tabButtons = document.querySelectorAll('.tab-btn')
+const tabContents = document.querySelectorAll('.tab-content')
 const registerForm = document.getElementById('registerForm')
+const adminRegisterForm = document.getElementById('adminRegisterForm')
+const googleButton = document.querySelector('.google-btn')
+
+// Employee form elements
 const fullNameInput = document.getElementById('fullName')
 const emailInput = document.getElementById('email')
 const passwordInput = document.getElementById('password')
 const confirmPasswordInput = document.getElementById('confirmPassword')
-const adminCodeInput = document.getElementById('adminCode')
-const adminCodeGroup = document.getElementById('adminCodeGroup')
 const agreeTermsCheckbox = document.getElementById('agreeTerms')
-const registerButton = document.querySelector('.login-btn')
-const googleButton = document.querySelector('.google-btn')
+const registerButton = document.querySelector('#registerForm .login-btn')
+
+// Admin form elements
+const adminFullNameInput = document.getElementById('adminFullName')
+const adminEmailInput = document.getElementById('adminEmail')
+const adminPasswordInput = document.getElementById('adminPassword')
+const adminConfirmPasswordInput = document.getElementById('adminConfirmPassword')
+const adminCodeInput = document.getElementById('adminCode')
+const adminAgreeTermsCheckbox = document.getElementById('adminAgreeTerms')
+const adminRegisterButton = document.querySelector('#adminRegisterForm .login-btn')
+
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
@@ -40,62 +52,72 @@ function initializeApp() {
 function setupTabSwitching() {
   tabButtons.forEach(button => {
     button.addEventListener('click', function() {
-      // Remove active class from all tabs
+      // Remove active class from all tabs and content
       tabButtons.forEach(tab => tab.classList.remove('active'))
+      tabContents.forEach(content => content.classList.remove('active'))
 
       // Add active class to clicked tab
       this.classList.add('active')
 
-      // Update current registration type
-      currentRegistrationType = this.dataset.tab
-
-      // Show/hide admin code field
-      if (currentRegistrationType === 'admin') {
-        adminCodeGroup.style.display = 'block'
-        adminCodeGroup.classList.add('show')
-        adminCodeInput.required = true
-      } else {
-        adminCodeGroup.style.display = 'none'
-        adminCodeGroup.classList.remove('show')
-        adminCodeInput.required = false
-        adminCodeInput.value = ''
+      // Show corresponding content
+      const targetTab = this.dataset.tab
+      const targetContent = document.querySelector(`.tab-content[data-tab="${targetTab}"]`)
+      if (targetContent) {
+        targetContent.classList.add('active')
       }
 
-      // Update placeholder text based on registration type
-      updatePlaceholders()
+      // Update current registration type
+      currentRegistrationType = targetTab
+
+      // Clear both forms
+      if (registerForm) registerForm.reset()
+      if (adminRegisterForm) adminRegisterForm.reset()
     })
   })
 }
 
-function updatePlaceholders() {
-  if (currentRegistrationType === 'admin') {
-    emailInput.placeholder = 'Enter admin email'
-    fullNameInput.placeholder = 'Enter admin full name'
-  } else {
-    emailInput.placeholder = 'Enter your email'
-    fullNameInput.placeholder = 'Enter your full name'
-  }
-}
-
 // Form handling
 function setupFormHandling() {
-  registerForm.addEventListener('submit', async function(e) {
-    e.preventDefault()
+  // Employee registration form
+  if (registerForm) {
+    registerForm.addEventListener('submit', async function(e) {
+      e.preventDefault()
 
-    if (!validateForm()) {
-      return
-    }
+      if (!validateForm('employee')) {
+        return
+      }
 
-    const formData = {
-      fullName: fullNameInput.value.trim(),
-      email: emailInput.value.trim(),
-      password: passwordInput.value.trim(),
-      role: currentRegistrationType,
-      adminCode: adminCodeInput.value.trim()
-    }
+      const formData = {
+        fullName: fullNameInput.value.trim(),
+        email: emailInput.value.trim(),
+        password: passwordInput.value.trim(),
+        role: 'employee'
+      }
 
-    await handleRegistration(formData)
-  })
+      await handleRegistration(formData, 'employee')
+    })
+  }
+
+  // Admin registration form
+  if (adminRegisterForm) {
+    adminRegisterForm.addEventListener('submit', async function(e) {
+      e.preventDefault()
+
+      if (!validateForm('admin')) {
+        return
+      }
+
+      const formData = {
+        fullName: adminFullNameInput.value.trim(),
+        email: adminEmailInput.value.trim(),
+        password: adminPasswordInput.value.trim(),
+        role: 'admin',
+        adminCode: adminCodeInput.value.trim()
+      }
+
+      await handleRegistration(formData, 'admin')
+    })
+  }
 }
 
 function validateForm() {
@@ -263,29 +285,36 @@ function setupPasswordValidation() {
   })
 }
 
-// Google Authentication
+// Google Authentication (Employee Only)
 function setupGoogleAuth() {
-  googleButton.addEventListener('click', async function() {
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin,
-          data: {
-            role: currentRegistrationType
-          }
-        }
-      })
+  if (googleButton) {
+    googleButton.addEventListener('click', async function() {
+      try {
+        setFormLoading(true, 'employee')
 
-      if (error) {
-        showMessage('Google registration failed', 'error')
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin + '/employee-dashboard.html',
+            queryParams: {
+              access_type: 'offline',
+              prompt: 'consent',
+            }
+          }
+        })
+
+        if (error) {
+          showMessage('Google registration failed: ' + error.message, 'error')
+          console.error('Google auth error:', error)
+        }
+      } catch (error) {
+        showMessage('Google registration failed: ' + error.message, 'error')
         console.error('Google auth error:', error)
+      } finally {
+        setFormLoading(false, 'employee')
       }
-    } catch (error) {
-      showMessage('Google registration failed', 'error')
-      console.error('Google auth error:', error)
-    }
-  })
+    })
+  }
 }
 
 // Utility functions

@@ -52,6 +52,10 @@
               <span class="nav-icon">📈</span>
               My Reports
             </button>
+            <button class="nav-btn" data-section="profile">
+              <span class="nav-icon">👤</span>
+              My Profile
+            </button>
           </nav>
         </aside>
 
@@ -128,7 +132,16 @@
           <section id="tasks" class="content-section">
             <div class="section-header">
               <h2>My Tasks</h2>
-              <div class="task-filters">
+            </div>
+
+            <!-- Enhanced Task Filters -->
+            <div class="task-filters">
+              <div class="filter-group">
+                <label for="taskSearch">Search Tasks:</label>
+                <input type="text" id="taskSearch" class="search-input" placeholder="Search by title or description...">
+              </div>
+              <div class="filter-group">
+                <label for="taskStatusFilter">Filter by Status:</label>
                 <select id="taskStatusFilter">
                   <option value="">All Status</option>
                   <option value="pending">Pending</option>
@@ -137,6 +150,38 @@
                   <option value="completed">Completed</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
+              </div>
+            </div>
+
+            <!-- Task Statistics -->
+            <div class="task-stats" id="taskStats">
+              <div class="stat-card">
+                <div class="stat-icon">📋</div>
+                <div class="stat-info">
+                  <span class="stat-number" id="totalTasksCount">0</span>
+                  <span class="stat-label">Total Tasks</span>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">🚀</div>
+                <div class="stat-info">
+                  <span class="stat-number" id="runningTasksCount">0</span>
+                  <span class="stat-label">In Progress</span>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-info">
+                  <span class="stat-number" id="completedTasksCount">0</span>
+                  <span class="stat-label">Completed</span>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-info">
+                  <span class="stat-number" id="completionRate">0%</span>
+                  <span class="stat-label">Completion Rate</span>
+                </div>
               </div>
             </div>
 
@@ -219,6 +264,103 @@
 
             <div class="reports-list" id="reportsList">
               <!-- Reports will be loaded here -->
+            </div>
+          </section>
+
+          <!-- Profile Section -->
+          <section id="profile" class="content-section">
+            <div class="section-header">
+              <h2>My Profile</h2>
+              <div class="header-actions">
+                <button class="secondary-btn" id="cancelProfileBtn" style="display: none;">Cancel</button>
+                <button class="primary-btn" id="editProfileBtn">Edit Profile</button>
+              </div>
+            </div>
+
+            <!-- Profile Information Display -->
+            <div class="profile-display" id="profileDisplay">
+              <div class="profile-card">
+                <div class="profile-header">
+                  <div class="profile-avatar">
+                    <span class="avatar-icon">👤</span>
+                  </div>
+                  <div class="profile-info">
+                    <h3 id="displayFullName">Loading...</h3>
+                    <p id="displayEmail">Loading...</p>
+                    <span class="role-badge" id="displayRole">Employee</span>
+                  </div>
+                </div>
+
+                <div class="profile-details">
+                  <div class="detail-group">
+                    <label>Full Name:</label>
+                    <span id="profileFullName">Loading...</span>
+                  </div>
+                  <div class="detail-group">
+                    <label>Email Address:</label>
+                    <span id="profileEmail">Loading...</span>
+                  </div>
+                  <div class="detail-group">
+                    <label>Role:</label>
+                    <span id="profileRole">Employee</span>
+                  </div>
+                  <div class="detail-group">
+                    <label>Member Since:</label>
+                    <span id="profileJoinDate">Loading...</span>
+                  </div>
+                  <div class="detail-group">
+                    <label>Status:</label>
+                    <span class="status-badge status-completed" id="profileStatus">Active</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Profile Edit Form -->
+            <div class="profile-edit" id="profileEdit" style="display: none;">
+              <div class="edit-sections">
+                <!-- Personal Information Section -->
+                <div class="edit-section">
+                  <h3>Personal Information</h3>
+                  <form id="personalInfoForm" class="profile-form">
+                    <div class="form-group">
+                      <label for="editFullName">Full Name</label>
+                      <input type="text" id="editFullName" name="full_name" required>
+                    </div>
+                    <div class="form-group">
+                      <label for="editEmail">Email Address</label>
+                      <input type="email" id="editEmail" name="email" required readonly>
+                      <small class="form-note">Email cannot be changed. Contact admin if needed.</small>
+                    </div>
+                    <div class="form-actions">
+                      <button type="submit" class="primary-btn">Update Personal Info</button>
+                    </div>
+                  </form>
+                </div>
+
+                <!-- Password Change Section -->
+                <div class="edit-section">
+                  <h3>Change Password</h3>
+                  <form id="passwordChangeForm" class="profile-form">
+                    <div class="form-group">
+                      <label for="currentPassword">Current Password</label>
+                      <input type="password" id="currentPassword" name="current_password" required>
+                    </div>
+                    <div class="form-group">
+                      <label for="newPassword">New Password</label>
+                      <input type="password" id="newPassword" name="new_password" required minlength="6">
+                      <small class="form-note">Password must be at least 6 characters long.</small>
+                    </div>
+                    <div class="form-group">
+                      <label for="confirmPassword">Confirm New Password</label>
+                      <input type="password" id="confirmPassword" name="confirm_password" required>
+                    </div>
+                    <div class="form-actions">
+                      <button type="submit" class="primary-btn">Change Password</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
             </div>
           </section>
         </div>

@@ -329,6 +329,29 @@ body {
   }
 }
 
+/* Tab content visibility */
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* Employee-only elements visibility */
+.employee-only {
+  display: none;
+}
+
+.tab-content.active .employee-only {
+  display: block;
+}
+
+/* Hide Google login for admin tab */
+.tab-content[data-tab="admin"] .employee-only {
+  display: none !important;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .container {

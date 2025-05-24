@@ -165,8 +165,11 @@ function setupEventListeners() {
   document.getElementById('taskEmployeeFilter').addEventListener('change', filterTasks)
   document.getElementById('filterAttendanceBtn').addEventListener('click', filterAttendance)
 
-  // Report generation
+  // Report generation and filtering
   document.getElementById('generateReportBtn').addEventListener('click', generateReport)
+  document.getElementById('filterReportsBtn').addEventListener('click', filterReports)
+  document.getElementById('clearReportsFilterBtn').addEventListener('click', clearReportsFilter)
+  document.getElementById('reportEmployeeFilter').addEventListener('change', filterReports)
 }
 
 async function loadDashboardData() {
@@ -315,20 +318,37 @@ function loadRecentActivity() {
 }
 
 async function loadTasksData() {
-  const tasksTableBody = document.getElementById('tasksTableBody')
-  const taskEmployeeFilter = document.getElementById('taskEmployeeFilter')
-  const taskAssignee = document.getElementById('taskAssignee')
+  try {
+    // Fetch fresh task data from database
+    const { data: tasksData, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .order('created_at', { ascending: false })
 
-  // Populate employee filters
-  let employeeOptions = '<option value="">All Employees</option>'
-  employees.forEach(emp => {
-    employeeOptions += `<option value="${emp.id}">${emp.full_name}</option>`
-  })
-  taskEmployeeFilter.innerHTML = employeeOptions
-  taskAssignee.innerHTML = '<option value="">Select Employee</option>' +
-    employees.map(emp => `<option value="${emp.id}">${emp.full_name}</option>`).join('')
+    if (error) throw error
 
-  renderTasksTable()
+    // Update the global tasks array
+    tasks = tasksData || []
+
+    const tasksTableBody = document.getElementById('tasksTableBody')
+    const taskEmployeeFilter = document.getElementById('taskEmployeeFilter')
+    const taskAssignee = document.getElementById('taskAssignee')
+
+    // Populate employee filters
+    let employeeOptions = '<option value="">All Employees</option>'
+    employees.forEach(emp => {
+      employeeOptions += `<option value="${emp.id}">${emp.full_name}</option>`
+    })
+    taskEmployeeFilter.innerHTML = employeeOptions
+    taskAssignee.innerHTML = '<option value="">Select Employee</option>' +
+      employees.map(emp => `<option value="${emp.id}">${emp.full_name}</option>`).join('')
+
+    renderTasksTable()
+
+  } catch (error) {
+    console.error('Error loading tasks data:', error)
+    showMessage('Failed to load tasks data', 'error')
+  }
 }
 
 async function renderTasksTable() {
@@ -414,35 +434,52 @@ function renderAttendanceTable() {
 }
 
 async function loadEmployeesData() {
-  const employeesTableBody = document.getElementById('employeesTableBody')
+  try {
+    // Fetch fresh employee data from database
+    const { data: employeesData, error } = await supabase
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: false })
 
-  let employeesHTML = ''
-  employees.forEach(employee => {
-    const status = employee.status || 'active'
-    const statusClass = status === 'active' ? 'completed' : status === 'inactive' ? 'paused' : 'cancelled'
+    if (error) throw error
 
-    employeesHTML += `
-      <tr>
-        <td>${employee.full_name}</td>
-        <td>${employee.email}</td>
-        <td><span class="status-badge status-${employee.role}">${employee.role.toUpperCase()}</span></td>
-        <td>${formatDate(employee.created_at)}</td>
-        <td><span class="status-badge status-${statusClass}">${status.toUpperCase()}</span></td>
-        <td>
-          <div class="action-buttons">
-            <button class="action-btn edit" onclick="editEmployee('${employee.id}')" title="Edit Employee">
-              <span class="btn-text">Edit</span>
-            </button>
-            <button class="action-btn delete" onclick="deleteEmployee('${employee.id}')" title="Delete Employee">
-              <span class="btn-text">Delete</span>
-            </button>
-          </div>
-        </td>
-      </tr>
-    `
-  })
+    // Update the global employees array
+    employees = employeesData || []
 
-  employeesTableBody.innerHTML = employeesHTML || '<tr><td colspan="6">No employees found</td></tr>'
+    const employeesTableBody = document.getElementById('employeesTableBody')
+
+    let employeesHTML = ''
+    employees.forEach(employee => {
+      const status = employee.status || 'active'
+      const statusClass = status === 'active' ? 'completed' : status === 'inactive' ? 'paused' : 'cancelled'
+
+      employeesHTML += `
+        <tr>
+          <td>${employee.full_name}</td>
+          <td>${employee.email}</td>
+          <td><span class="status-badge status-${employee.role}">${employee.role.toUpperCase()}</span></td>
+          <td>${formatDate(employee.created_at)}</td>
+          <td><span class="status-badge status-${statusClass}">${status.toUpperCase()}</span></td>
+          <td>
+            <div class="action-buttons">
+              <button class="action-btn edit" onclick="editEmployee('${employee.id}')" title="Edit Employee">
+                <span class="btn-text">Edit</span>
+              </button>
+              <button class="action-btn delete" onclick="deleteEmployee('${employee.id}')" title="Delete Employee">
+                <span class="btn-text">Delete</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `
+    })
+
+    employeesTableBody.innerHTML = employeesHTML || '<tr><td colspan="6">No employees found</td></tr>'
+
+  } catch (error) {
+    console.error('Error loading employees data:', error)
+    showMessage('Failed to load employees data', 'error')
+  }
 }
 
 async function loadReportsData() {
@@ -454,33 +491,61 @@ async function loadReportsData() {
 
     if (error) throw error
 
-    const reportsContainer = document.getElementById('reportsContainer')
+    // Store reports globally for filtering
+    window.allReports = reports || []
 
-    let reportsHTML = ''
-    reports.forEach(report => {
-      // Get user name
-      let userName = 'Unknown'
-      if (report.user_id) {
-        const user = employees.find(emp => emp.id === report.user_id)
-        userName = user ? user.full_name : 'Unknown User'
-      }
-
-      reportsHTML += `
-        <div class="report-card">
-          <h4>${userName}</h4>
-          <p class="report-date">${formatDate(report.report_date)}</p>
-          <p class="report-summary">${report.summary}</p>
-          <small>Generated: ${formatDate(report.created_at)}</small>
-        </div>
-      `
+    // Populate employee filter dropdown
+    const reportEmployeeFilter = document.getElementById('reportEmployeeFilter')
+    let employeeOptions = '<option value="">All Employees</option>'
+    employees.forEach(emp => {
+      employeeOptions += `<option value="${emp.id}">${emp.full_name}</option>`
     })
+    reportEmployeeFilter.innerHTML = employeeOptions
 
-    reportsContainer.innerHTML = reportsHTML || '<p>No reports found</p>'
+    // Render reports
+    renderReports(reports)
 
   } catch (error) {
     console.error('Error loading reports:', error)
     showMessage('Failed to load reports', 'error')
   }
+}
+
+function renderReports(reports) {
+  const reportsContainer = document.getElementById('reportsContainer')
+
+  if (!reports || reports.length === 0) {
+    reportsContainer.innerHTML = '<div class="empty-state"><h3>No reports found</h3><p>No reports match the current filter criteria.</p></div>'
+    return
+  }
+
+  let reportsHTML = ''
+  reports.forEach(report => {
+    // Get user name
+    let userName = 'Unknown'
+    if (report.user_id) {
+      const user = employees.find(emp => emp.id === report.user_id)
+      userName = user ? user.full_name : 'Unknown User'
+    }
+
+    reportsHTML += `
+      <div class="report-card" data-report-id="${report.id}" data-user-id="${report.user_id}">
+        <div class="report-header">
+          <h4>${userName}</h4>
+          <div class="report-actions">
+            <button class="action-btn delete" onclick="deleteReport('${report.id}')" title="Delete Report">
+              <span class="btn-text">Delete</span>
+            </button>
+          </div>
+        </div>
+        <p class="report-date">${formatDate(report.report_date)}</p>
+        <p class="report-summary">${report.summary}</p>
+        <small>Generated: ${formatDate(report.created_at)}</small>
+      </div>
+    `
+  })
+
+  reportsContainer.innerHTML = reportsHTML
 }
 
 // Task Management Functions
@@ -493,6 +558,17 @@ function openTaskModal(taskId = null) {
     // Load task data for editing
     const task = tasks.find(t => t.id === taskId)
     if (task) {
+      // Add hidden input for task ID
+      let hiddenIdInput = document.getElementById('taskId')
+      if (!hiddenIdInput) {
+        hiddenIdInput = document.createElement('input')
+        hiddenIdInput.type = 'hidden'
+        hiddenIdInput.name = 'id'
+        hiddenIdInput.id = 'taskId'
+        taskForm.appendChild(hiddenIdInput)
+      }
+      hiddenIdInput.value = taskId
+
       document.getElementById('taskTitle').value = task.title
       document.getElementById('taskDescription').value = task.description || ''
       document.getElementById('taskAssignee').value = task.assigned_to || ''
@@ -500,6 +576,11 @@ function openTaskModal(taskId = null) {
   } else {
     title.textContent = 'Add New Task'
     taskForm.reset()
+    // Remove hidden ID input if it exists
+    const hiddenIdInput = document.getElementById('taskId')
+    if (hiddenIdInput) {
+      hiddenIdInput.remove()
+    }
   }
 
   modal.classList.add('active')
@@ -514,29 +595,57 @@ async function handleTaskSubmit(e) {
   e.preventDefault()
 
   const formData = new FormData(taskForm)
+  const taskId = formData.get('id') // Check if this is an edit
   const taskData = {
     title: formData.get('title'),
     description: formData.get('description'),
-    assigned_to: formData.get('assigned_to'),
-    created_by: currentUser.id,
-    status: 'pending'
+    assigned_to: formData.get('assigned_to')
+  }
+
+  // Only set created_by and status for new tasks
+  if (!taskId) {
+    taskData.created_by = currentUser.id
+    taskData.status = 'pending'
   }
 
   try {
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert([taskData])
-      .select()
+    let error
+
+    if (taskId) {
+      // Update existing task
+      const result = await supabase
+        .from('tasks')
+        .update(taskData)
+        .eq('id', taskId)
+      error = result.error
+
+      if (!error) {
+        showMessage('Task updated successfully', 'success')
+      }
+    } else {
+      // Create new task
+      const result = await supabase
+        .from('tasks')
+        .insert([taskData])
+        .select()
+      error = result.error
+
+      if (!error) {
+        showMessage('Task created successfully', 'success')
+      }
+    }
 
     if (error) throw error
 
-    showMessage('Task created successfully', 'success')
     closeTaskModal()
+
+    // Refresh all related data
     await loadTasksData()
+    await loadOverviewData()
 
   } catch (error) {
-    console.error('Error creating task:', error)
-    showMessage('Failed to create task', 'error')
+    console.error('Error saving task:', error)
+    showMessage('Failed to save task', 'error')
   }
 }
 
@@ -683,7 +792,10 @@ window.deleteTask = async function(taskId) {
       if (error) throw error
 
       showMessage('Task deleted successfully', 'success')
+
+      // Refresh all related data
       await loadTasksData()
+      await loadOverviewData()
 
     } catch (error) {
       console.error('Error deleting task:', error)
@@ -797,6 +909,40 @@ window.deleteEmployee = async function(employeeId) {
   }
 }
 
+// Report Management Functions
+window.deleteReport = async function(reportId) {
+  if (!reportId) {
+    showMessage('Report ID not found', 'error')
+    return
+  }
+
+  if (confirm('Are you sure you want to delete this report? This action cannot be undone.')) {
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .delete()
+        .eq('id', reportId)
+
+      if (error) throw error
+
+      // Remove the report card from the UI
+      const reportCard = document.querySelector(`[data-report-id="${reportId}"]`)
+      if (reportCard) {
+        reportCard.remove()
+      }
+
+      showMessage('Report deleted successfully', 'success')
+
+      // Refresh reports data
+      await loadReportsData()
+
+    } catch (error) {
+      console.error('Error deleting report:', error)
+      showMessage('Failed to delete report: ' + error.message, 'error')
+    }
+  }
+}
+
 // Additional functions for filters and attendance
 function filterTasks() {
   const statusFilter = document.getElementById('taskStatusFilter').value
@@ -817,6 +963,67 @@ function filterTasks() {
   tasks = filteredTasks
   renderTasksTable()
   tasks = originalTasks
+}
+
+function filterReports() {
+  const startDate = document.getElementById('reportStartDate').value
+  const endDate = document.getElementById('reportEndDate').value
+  const employeeFilter = document.getElementById('reportEmployeeFilter').value
+
+  let filteredReports = window.allReports || []
+
+  // Filter by employee
+  if (employeeFilter) {
+    filteredReports = filteredReports.filter(report => report.user_id === employeeFilter)
+  }
+
+  // Filter by date range
+  if (startDate) {
+    filteredReports = filteredReports.filter(report => {
+      const reportDate = new Date(report.report_date || report.created_at)
+      return reportDate >= new Date(startDate)
+    })
+  }
+
+  if (endDate) {
+    filteredReports = filteredReports.filter(report => {
+      const reportDate = new Date(report.report_date || report.created_at)
+      return reportDate <= new Date(endDate)
+    })
+  }
+
+  // Render filtered reports
+  renderReports(filteredReports)
+
+  // Show filter status message
+  const totalReports = window.allReports ? window.allReports.length : 0
+  const filteredCount = filteredReports.length
+
+  if (employeeFilter || startDate || endDate) {
+    const employeeName = employeeFilter ?
+      employees.find(emp => emp.id === employeeFilter)?.full_name || 'Selected Employee' :
+      'All Employees'
+
+    const dateRange = startDate && endDate ?
+      ` from ${startDate} to ${endDate}` :
+      startDate ? ` from ${startDate}` :
+      endDate ? ` until ${endDate}` : ''
+
+    showMessage(`Showing ${filteredCount} of ${totalReports} reports for ${employeeName}${dateRange}`, 'info')
+  }
+}
+
+function clearReportsFilter() {
+  // Clear all filter inputs
+  document.getElementById('reportStartDate').value = ''
+  document.getElementById('reportEndDate').value = ''
+  document.getElementById('reportEmployeeFilter').value = ''
+
+  // Show all reports
+  renderReports(window.allReports || [])
+
+  const totalReports = window.allReports ? window.allReports.length : 0
+  showMessage(`Showing all ${totalReports} reports`, 'info')
 }
 
 function filterAttendance() {

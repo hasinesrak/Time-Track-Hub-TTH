@@ -142,7 +142,14 @@ function setupEventListeners() {
 
   // Filters
   document.getElementById('taskStatusFilter').addEventListener('change', filterTasks)
+  document.getElementById('taskSearch').addEventListener('input', filterTasks)
   document.getElementById('filterAttendanceBtn').addEventListener('click', filterAttendance)
+
+  // Profile management
+  document.getElementById('editProfileBtn').addEventListener('click', toggleProfileEdit)
+  document.getElementById('cancelProfileBtn').addEventListener('click', cancelProfileEdit)
+  document.getElementById('personalInfoForm').addEventListener('submit', handlePersonalInfoUpdate)
+  document.getElementById('passwordChangeForm').addEventListener('submit', handlePasswordChange)
 }
 
 async function loadDashboardData() {
@@ -183,6 +190,9 @@ async function loadDashboardData() {
 
     // Load initial overview
     await loadOverviewData()
+
+    // Load profile data
+    await loadProfileData()
     console.log('Employee dashboard data loaded successfully')
 
   } catch (error) {
@@ -270,31 +280,96 @@ function loadRecentTasks() {
 }
 
 async function loadTasksData() {
+  updateTaskStats()
   renderTasksGrid()
+}
+
+function updateTaskStats() {
+  const totalTasks = myTasks.length
+  const runningTasks = myTasks.filter(t => t.status === 'running').length
+  const completedTasks = myTasks.filter(t => t.status === 'completed').length
+  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+
+  document.getElementById('totalTasksCount').textContent = totalTasks
+  document.getElementById('runningTasksCount').textContent = runningTasks
+  document.getElementById('completedTasksCount').textContent = completedTasks
+  document.getElementById('completionRate').textContent = `${completionRate}%`
 }
 
 function renderTasksGrid() {
   const tasksGrid = document.getElementById('tasksGrid')
+  const statusFilter = document.getElementById('taskStatusFilter').value
+  const searchQuery = document.getElementById('taskSearch').value.toLowerCase().trim()
 
-  if (myTasks.length === 0) {
+  // Filter tasks based on status and search query
+  let filteredTasks = myTasks
+
+  if (statusFilter) {
+    filteredTasks = filteredTasks.filter(task => task.status === statusFilter)
+  }
+
+  if (searchQuery) {
+    filteredTasks = filteredTasks.filter(task =>
+      task.title.toLowerCase().includes(searchQuery) ||
+      (task.description && task.description.toLowerCase().includes(searchQuery))
+    )
+  }
+
+  if (filteredTasks.length === 0) {
+    let emptyMessage, emptyDescription
+
+    if (searchQuery && statusFilter) {
+      emptyMessage = `No ${statusFilter} tasks found for "${searchQuery}"`
+      emptyDescription = `Try adjusting your search or filter criteria.`
+    } else if (searchQuery) {
+      emptyMessage = `No tasks found for "${searchQuery}"`
+      emptyDescription = `Try searching with different keywords.`
+    } else if (statusFilter) {
+      emptyMessage = `No ${statusFilter} tasks found`
+      emptyDescription = `You don't have any ${statusFilter} tasks at the moment.`
+    } else {
+      emptyMessage = 'No tasks assigned yet'
+      emptyDescription = 'You don\'t have any tasks assigned yet. Check back later!'
+    }
+
     tasksGrid.innerHTML = `
       <div class="empty-state">
-        <h3>No Tasks Assigned</h3>
-        <p>You don't have any tasks assigned yet. Check back later!</p>
+        <div class="empty-icon">📋</div>
+        <h3>${emptyMessage}</h3>
+        <p>${emptyDescription}</p>
       </div>
     `
     return
   }
 
   let tasksHTML = ''
-  myTasks.forEach(task => {
+  filteredTasks.forEach(task => {
+    const priority = task.priority || 'medium'
+    const dueDate = task.due_date ? new Date(task.due_date) : null
+    const isOverdue = dueDate && dueDate < new Date() && task.status !== 'completed'
+
     tasksHTML += `
-      <div class="task-card" data-task-id="${task.id}">
-        <h4>${task.title}</h4>
-        <p>${task.description || 'No description provided'}</p>
+      <div class="task-card ${isOverdue ? 'overdue' : ''}" data-task-id="${task.id}" data-priority="${priority}">
+        <div class="task-header">
+          <h4>${task.title}</h4>
+          <div class="task-priority priority-${priority}" title="${priority.charAt(0).toUpperCase() + priority.slice(1)} Priority">
+            ${getPriorityIcon(priority)}
+          </div>
+        </div>
+        <p class="task-description">${task.description || 'No description provided'}</p>
+        ${dueDate ? `
+          <div class="task-due-date ${isOverdue ? 'overdue' : ''}">
+            <span class="due-icon">📅</span>
+            <span class="due-text">Due: ${formatDate(task.due_date)}</span>
+            ${isOverdue ? '<span class="overdue-badge">OVERDUE</span>' : ''}
+          </div>
+        ` : ''}
         <div class="task-meta">
-          <span class="status-badge status-${task.status}">${task.status.toUpperCase()}</span>
-          <small>Created: ${formatDate(task.created_at)}</small>
+          ${task.status !== 'completed' && task.status !== 'cancelled' ?
+            `<span class="status-badge status-${task.status}">${task.status.toUpperCase()}</span>` :
+            ''
+          }
+          <small class="task-created">Created: ${formatDate(task.created_at)}</small>
         </div>
         <div class="task-card-actions">
           ${getTaskActionButtons(task)}
@@ -306,40 +381,49 @@ function renderTasksGrid() {
   tasksGrid.innerHTML = tasksHTML
 }
 
+function getPriorityIcon(priority) {
+  switch (priority) {
+    case 'high': return '🔴'
+    case 'medium': return '🟡'
+    case 'low': return '🟢'
+    default: return '🟡'
+  }
+}
+
 function getTaskActionButtons(task) {
   let buttons = ''
 
   switch (task.status) {
     case 'pending':
       buttons = `<button class="action-btn start" onclick="updateTaskStatus('${task.id}', 'running')" data-task-id="${task.id}">
-        <span class="btn-text">Start Task</span>
+        <span class="btn-text">🚀 Start Task</span>
       </button>`
       break
     case 'running':
       buttons = `
         <button class="action-btn pause" onclick="updateTaskStatus('${task.id}', 'paused')" data-task-id="${task.id}">
-          <span class="btn-text">Pause</span>
+          <span class="btn-text">⏸️ Pause</span>
         </button>
         <button class="action-btn complete" onclick="updateTaskStatus('${task.id}', 'completed')" data-task-id="${task.id}">
-          <span class="btn-text">Complete</span>
+          <span class="btn-text">✅ Complete</span>
         </button>
       `
       break
     case 'paused':
       buttons = `
         <button class="action-btn start" onclick="updateTaskStatus('${task.id}', 'running')" data-task-id="${task.id}">
-          <span class="btn-text">Resume</span>
+          <span class="btn-text">▶️ Resume</span>
         </button>
         <button class="action-btn complete" onclick="updateTaskStatus('${task.id}', 'completed')" data-task-id="${task.id}">
-          <span class="btn-text">Complete</span>
+          <span class="btn-text">✅ Complete</span>
         </button>
       `
       break
     case 'completed':
-      buttons = '<div class="status-indicator completed"><span class="status-icon">✓</span> Completed</div>'
+      buttons = '<div class="task-completion-info"><span class="completion-icon">🎉</span><span class="completion-text">Task Completed!</span></div>'
       break
     case 'cancelled':
-      buttons = '<div class="status-indicator cancelled"><span class="status-icon">✗</span> Cancelled</div>'
+      buttons = '<div class="task-completion-info"><span class="completion-icon">❌</span><span class="completion-text">Task Cancelled</span></div>'
       break
   }
 
@@ -620,19 +704,188 @@ async function handleReportSubmit(e) {
 
 // Filter Functions
 function filterTasks() {
-  const statusFilter = document.getElementById('taskStatusFilter').value
+  updateTaskStats()
+  renderTasksGrid()
+}
 
-  let filteredTasks = myTasks
+// Profile Management Functions
+async function loadProfileData() {
+  try {
+    // Update profile display with current user data
+    document.getElementById('displayFullName').textContent = currentUser.full_name || 'Not set'
+    document.getElementById('displayEmail').textContent = currentUser.email || 'Not set'
+    document.getElementById('displayRole').textContent = (currentUser.role || 'employee').toUpperCase()
 
-  if (statusFilter) {
-    filteredTasks = filteredTasks.filter(task => task.status === statusFilter)
+    document.getElementById('profileFullName').textContent = currentUser.full_name || 'Not set'
+    document.getElementById('profileEmail').textContent = currentUser.email || 'Not set'
+    document.getElementById('profileRole').textContent = (currentUser.role || 'employee').toUpperCase()
+    document.getElementById('profileJoinDate').textContent = formatDate(currentUser.created_at)
+    document.getElementById('profileStatus').textContent = (currentUser.status || 'active').toUpperCase()
+
+    // Update status badge class
+    const statusBadge = document.getElementById('profileStatus')
+    const status = currentUser.status || 'active'
+    const statusClass = status === 'active' ? 'completed' : status === 'inactive' ? 'paused' : 'cancelled'
+    statusBadge.className = `status-badge status-${statusClass}`
+
+  } catch (error) {
+    console.error('Error loading profile data:', error)
+    showMessage('Failed to load profile data', 'error')
+  }
+}
+
+function toggleProfileEdit() {
+  const profileDisplay = document.getElementById('profileDisplay')
+  const profileEdit = document.getElementById('profileEdit')
+  const editBtn = document.getElementById('editProfileBtn')
+  const cancelBtn = document.getElementById('cancelProfileBtn')
+
+  // Hide display, show edit form
+  profileDisplay.style.display = 'none'
+  profileEdit.style.display = 'block'
+  editBtn.style.display = 'none'
+  cancelBtn.style.display = 'inline-block'
+
+  // Populate edit form with current data
+  document.getElementById('editFullName').value = currentUser.full_name || ''
+  document.getElementById('editEmail').value = currentUser.email || ''
+
+  // Clear password fields
+  document.getElementById('currentPassword').value = ''
+  document.getElementById('newPassword').value = ''
+  document.getElementById('confirmPassword').value = ''
+}
+
+function cancelProfileEdit() {
+  const profileDisplay = document.getElementById('profileDisplay')
+  const profileEdit = document.getElementById('profileEdit')
+  const editBtn = document.getElementById('editProfileBtn')
+  const cancelBtn = document.getElementById('cancelProfileBtn')
+
+  // Show display, hide edit form
+  profileDisplay.style.display = 'block'
+  profileEdit.style.display = 'none'
+  editBtn.style.display = 'inline-block'
+  cancelBtn.style.display = 'none'
+
+  // Clear forms
+  document.getElementById('personalInfoForm').reset()
+  document.getElementById('passwordChangeForm').reset()
+}
+
+async function handlePersonalInfoUpdate(e) {
+  e.preventDefault()
+
+  const formData = new FormData(e.target)
+  const fullName = formData.get('full_name').trim()
+
+  if (!fullName) {
+    showMessage('Full name is required', 'error')
+    return
   }
 
-  // Update the tasks array temporarily for rendering
-  const originalTasks = myTasks
-  myTasks = filteredTasks
-  renderTasksGrid()
-  myTasks = originalTasks
+  try {
+    const submitBtn = e.target.querySelector('button[type="submit"]')
+    const originalText = submitBtn.textContent
+    submitBtn.disabled = true
+    submitBtn.textContent = 'Updating...'
+
+    // Update user in database
+    const { data, error } = await supabase
+      .from('users')
+      .update({
+        full_name: fullName,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', currentUser.id)
+      .select()
+
+    if (error) throw error
+
+    // Update current user data
+    currentUser.full_name = fullName
+
+    // Update profile display
+    await loadProfileData()
+
+    // Update header name
+    const employeeName = document.getElementById('employeeName')
+    if (employeeName) {
+      employeeName.textContent = fullName
+    }
+
+    showMessage('Personal information updated successfully', 'success')
+
+    // Reset form
+    submitBtn.disabled = false
+    submitBtn.textContent = originalText
+
+  } catch (error) {
+    console.error('Error updating personal info:', error)
+    showMessage('Failed to update personal information: ' + error.message, 'error')
+
+    // Reset button
+    const submitBtn = e.target.querySelector('button[type="submit"]')
+    submitBtn.disabled = false
+    submitBtn.textContent = 'Update Personal Info'
+  }
+}
+
+async function handlePasswordChange(e) {
+  e.preventDefault()
+
+  const formData = new FormData(e.target)
+  const currentPassword = formData.get('current_password')
+  const newPassword = formData.get('new_password')
+  const confirmPassword = formData.get('confirm_password')
+
+  // Validation
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    showMessage('All password fields are required', 'error')
+    return
+  }
+
+  if (newPassword.length < 6) {
+    showMessage('New password must be at least 6 characters long', 'error')
+    return
+  }
+
+  if (newPassword !== confirmPassword) {
+    showMessage('New passwords do not match', 'error')
+    return
+  }
+
+  try {
+    const submitBtn = e.target.querySelector('button[type="submit"]')
+    const originalText = submitBtn.textContent
+    submitBtn.disabled = true
+    submitBtn.textContent = 'Changing Password...'
+
+    // Update password using Supabase Auth
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    })
+
+    if (error) throw error
+
+    showMessage('Password changed successfully', 'success')
+
+    // Clear form
+    e.target.reset()
+
+    // Reset button
+    submitBtn.disabled = false
+    submitBtn.textContent = originalText
+
+  } catch (error) {
+    console.error('Error changing password:', error)
+    showMessage('Failed to change password: ' + error.message, 'error')
+
+    // Reset button
+    const submitBtn = e.target.querySelector('button[type="submit"]')
+    submitBtn.disabled = false
+    submitBtn.textContent = 'Change Password'
+  }
 }
 
 function filterAttendance() {
