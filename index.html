@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Time Track Hub - Login</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <!-- Left Side - Welcome Section -->
+      <div class="welcome-section">
+        <div class="logo-section">
+          <div class="logo">
+            <div class="logo-icon">
+              <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                <circle cx="20" cy="20" r="18" fill="#2D5A27" stroke="#fff" stroke-width="2"/>
+                <path d="M20 8v12l8 4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="logo-text">
+              <h1>Time<br>Track<br>Hub</h1>
+            </div>
+          </div>
+        </div>
+
+        <div class="welcome-content">
+          <h2>Welcome To Time Track Hub</h2>
+          <p>Employee & WorkTime Management system</p>
+
+          <button class="explore-btn">Explore Features</button>
+        </div>
+
+        <div class="footer-text">
+          <p>Developed By The Dev Hub</p>
+        </div>
+      </div>
+
+      <!-- Right Side - Login Section -->
+      <div class="login-section">
+        <div class="login-container">
+          <!-- Login Tabs -->
+          <div class="login-tabs">
+            <button class="tab-btn active" data-tab="employee">Employee Login</button>
+            <button class="tab-btn" data-tab="admin">Admin Login</button>
+          </div>
+
+          <h3 class="login-title">Login</h3>
+
+          <!-- Login Form -->
+          <form id="loginForm" class="login-form">
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input type="email" id="email" name="email" placeholder="Enter your email" required>
+            </div>
+
+            <div class="form-group">
+              <label for="password">Password</label>
+              <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+
+            <button type="submit" class="login-btn">Login</button>
+
+            <div class="divider">
+              <span>or</span>
+            </div>
+
+            <button type="button" class="google-btn">Login With Google</button>
+
+            <div class="register-link">
+              <p>Don't have an account? <a href="/register.html" id="registerLink">Register</a></p>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
